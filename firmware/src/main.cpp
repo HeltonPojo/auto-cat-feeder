@@ -22,14 +22,10 @@ bool spinning = false;
 /*❚█══█❚▬▬ι═══════>-------------------------------------------------------------------------------------------------<═══════ι▬▬❚█══█❚*/
 
 bool isAuthenticated() {
-  // if (server.hasHeader("Authorization")) {
-  //   String authHeader = server.header("Authorization");
-  //   String expectedAuth = "Bearer " + String(token);
-  //   return authHeader == expectedAuth;
-  // }
-
-  if (server.hasArg("token")) {
-    return server.arg("token") == TOKEN;
+  if (server.hasHeader("Authorization")) {
+    String authHeader = server.header("Authorization");
+    String expectedAuth = "Bearer " + String(TOKEN);
+    return authHeader == expectedAuth;
   }
 
   return false;
@@ -47,10 +43,12 @@ void handleFeed() {
   }
 
   if (spinning) {
-    server.send(201, "application/json", "{\"msg\": \"Already spinning\"}");
+    server.send(201, "application/json", "{\"msg\": \"Already feeding\"}");
     return;
   }
 
+  server.send(200, "application/json",
+              "{\"msg\": \"Initializating feeding routing\"}");
   Serial.println("Iniciando a rotina de alimentação");
   digitalWrite(BUZZER_PIN, HIGH);
   digitalWrite(LED_PIN, HIGH);
@@ -64,6 +62,7 @@ void handleFeed() {
   digitalWrite(BUZZER_PIN, LOW);
   digitalWrite(LED_PIN, LOW);
   spinning = false;
+  return;
 }
 
 /*❚█══█❚▬▬ι═══════>-------------------------------------------------------------------------------------------------<═══════ι▬▬❚█══█❚*/
