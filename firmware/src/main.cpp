@@ -26,8 +26,6 @@ const char *cron_schedule = "0 15 7,9,12,15,18,20,22 * * *";
 // Wifi configuraton
 WebServer server(80);
 
-int lastButtonStage = HIGH;
-int currentButtonStage;
 bool spinning = false;
 
 /*❚█══█❚▬▬ι═══════>-------------------------------------------------------------------------------------------------<═══════ι▬▬❚█══█❚*/
@@ -42,26 +40,29 @@ bool isAuthenticated() {
   return false;
 }
 
-void feed(cronos_tid id, void *arg) {
-  if (spinning) {
-    Serial.println("Rotina já iniciada");
-    return;
-  }
-
+void feed() {
   Serial.println("Iniciando a rotina de alimentação");
-  spinning = true;
-
   digitalWrite(BUZZER_PIN, HIGH);
   digitalWrite(LED_PIN, HIGH);
   servo.write(SPIN_R);
 
   delay(2000);
-  spinning = false;
 
   Serial.println("Finalizando a rotina de alimentação");
   servo.write(STOP);
   digitalWrite(BUZZER_PIN, LOW);
   digitalWrite(LED_PIN, LOW);
+}
+
+void cronFeed(cronos_tid id, void *arg) {
+  if (spinning) {
+    Serial.println("Rotina em execução");
+    return;
+  }
+
+  spinning = true;
+  feed();
+  spinning = false;
   return;
 }
 
@@ -110,11 +111,16 @@ void setup() {
   configTzTime(time_zone, ntpServer1, ntpServer2);
 
   sntp_set_time_sync_notification_cb(timeavailable);
-  cron.addCallback(cron_schedule, feed);
+  cron.addCallback(cron_schedule, cronFeed);
 
   server.begin();
 
   Serial.println("Sistema iniciado!");
 }
 
-void loop() {}
+void loop() {
+  delay(50);
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    feed();
+  }
+}
