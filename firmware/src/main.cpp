@@ -5,7 +5,8 @@
 #include <esp_sntp.h>
 
 #include <config.h>
-#include <htmlTemplates.h>
+#include <models.h>
+#include <routes.h>
 #include <secrets.h>
 
 /*❚█══█❚▬▬ι═══════>-------------------------------------------------------------------------------------------------<═══════ι▬▬❚█══█❚*/
@@ -29,16 +30,6 @@ WebServer server(80);
 bool spinning = false;
 
 /*❚█══█❚▬▬ι═══════>-------------------------------------------------------------------------------------------------<═══════ι▬▬❚█══█❚*/
-
-bool isAuthenticated() {
-  if (server.hasHeader("Authorization")) {
-    String authHeader = server.header("Authorization");
-    String expectedAuth = "Bearer " + String(TOKEN);
-    return authHeader == expectedAuth;
-  }
-
-  return false;
-}
 
 void feed() {
   Serial.println("Iniciando a rotina de alimentação");
@@ -104,22 +95,25 @@ void setup() {
   Serial.print("Endereço IP: ");
   Serial.println(WiFi.localIP());
 
-  // REST-API
-  // server.on("/feed", HTTP_POST, handleFeed);
-
   // Default cron jobs
   configTzTime(time_zone, ntpServer1, ntpServer2);
 
   sntp_set_time_sync_notification_cb(timeavailable);
   cron.addCallback(cron_schedule, cronFeed);
 
+  horarios[0] = {1, "10:00", "Sistema"};
+  horarios[1] = {2, "14:30", "Sistema"};
+  totalHorarios = 2;
+  proximoId = 3;
+  // REST-API
+  configurarRotas(server);
   server.begin();
 
   Serial.println("Sistema iniciado!");
 }
 
 void loop() {
-  delay(50);
+  server.handleClient();
   if (digitalRead(BUTTON_PIN) == LOW) {
     feed();
   }

@@ -1,0 +1,484 @@
+#include "html.h"
+
+const char INDEX_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Agendamento</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      width: 90%;
+      max-width: 900px;
+    }
+
+    .login-container {
+      max-width: 400px;
+      padding: 40px;
+    }
+
+    .dashboard-container {
+      padding: 30px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      margin-top: 10px;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .message.error {
+      background: #fee;
+      color: #c33;
+      border: 1px solid #fcc;
+    }
+
+    .message.success {
+      background: #efe;
+      color: #3c3;
+      border: 1px solid #cfc;
+    }
+
+    .horarios-list {
+      margin-top: 30px;
+    }
+
+    .horario-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 4px solid #667eea;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .horario-content {
+      flex: 1;
+    }
+
+    .horario-item h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .horario-item p {
+      color: #666;
+      font-size: 14px;
+      margin: 3px 0;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+      margin-left: 15px;
+      width: auto;
+    }
+
+    .btn-delete:hover {
+      background: #c82333;
+      transform: translateY(-1px);
+    }
+
+    .btn-delete:active {
+      transform: translateY(0);
+    }
+
+    .header-dashboard {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .user-info {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .form-criar {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loginPage" class="login-container">
+      <h1>Bem-vindo</h1>
+      <p class="subtitle">Faça login para acessar o sistema</p>
+      <div id="loginMessage"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="name">Nome</label>
+          <input type="text" id="name" required placeholder="Seu nome">
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input type="password" id="password" required placeholder="********">
+        </div>
+        <button type="submit">Entrar</button>
+      </form>
+    </div>
+
+    <div id="dashboardPage" class="dashboard-container hidden">
+      <div class="header-dashboard">
+        <div>
+          <h1>Dashboard de Horários</h1>
+          <p class="user-info" id="userInfo"></p>
+        </div>
+        <button class="btn-secondary" onclick="logout()" style="width: auto; padding: 10px 20px;">Sair</button>
+      </div>
+      <div id="dashboardMessage"></div>
+      <div class="form-criar">
+        <h2>Criar Novo Horário</h2>
+        <form id="criarHorarioForm">
+          <div class="form-group">
+            <label for="hora">Hora</label>
+            <input type="time" id="hora" required>
+          </div>
+          <button type="submit">Criar Horário</button>
+        </form>
+      </div>
+      <div class="horarios-list">
+        <h2>Horários Existentes</h2>
+        <div id="horariosContainer">
+          <div class="loading">Carregando horários...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const delay = 1000;
+    const API_URL = window.location.origin;
+
+    let appState = {
+      token: null,
+      user: null,
+      horarios: []
+    };
+
+    const storage = {
+      setToken: (token) => {
+        try {
+          document.cookie = `authToken=${token}; path=/; max-age=604800; SameSite=Strict`;
+        } catch (e) {
+          console.error('Erro ao salvar token:', e);
+        }
+      },
+      getToken: () => {
+        try {
+          const cookies = document.cookie.split(';');
+          for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'authToken') return value;
+          }
+          return null;
+        } catch (e) {
+          console.error('Erro ao recuperar token:', e);
+          return null;
+        }
+      },
+      setUser: (user) => {
+        try {
+          document.cookie = `userData=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Strict`;
+        } catch (e) {
+          console.error('Erro ao salvar usuário:', e);
+        }
+      },
+      getUser: () => {
+        try {
+          const cookies = document.cookie.split(';');
+          for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'userData') return JSON.parse(decodeURIComponent(value));
+          }
+          return null;
+        } catch (e) {
+          console.error('Erro ao recuperar usuário:', e);
+          return null;
+        }
+      },
+      clearAuth: () => {
+        try {
+          document.cookie = 'authToken=; path=/; max-age=0';
+          document.cookie = 'userData=; path=/; max-age=0';
+        } catch (e) {
+          console.error('Erro ao limpar autenticação:', e);
+        }
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      document.getElementById('loginForm').addEventListener('submit', handleLogin);
+      document.getElementById('criarHorarioForm').addEventListener('submit', handleCriarHorario);
+    });
+
+    function checkAuth() {
+      const savedToken = storage.getToken();
+      const savedUser = storage.getUser();
+      if (savedToken && savedUser) {
+        appState.token = savedToken;
+        appState.user = savedUser;
+        showDashboard();
+        carregarHorarios();
+      } else {
+        showLogin();
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const response = await fetch(`${API_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, password })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          appState.token = data.token;
+          appState.user = { name: data.name };
+          storage.setToken(data.token);
+          storage.setUser(appState.user);
+          showMessage('loginMessage', 'Login realizado com sucesso!', 'success');
+          setTimeout(() => {
+            showDashboard();
+            carregarHorarios();
+          }, delay);
+        } else {
+          showMessage('loginMessage', data.error || 'Erro ao fazer login', 'error');
+        }
+      } catch (error) {
+        showMessage('loginMessage', 'Erro de conexão com o servidor', 'error');
+      }
+    }
+
+    async function carregarHorarios() {
+      try {
+        const response = await fetch(`${API_URL}/schedules`, {
+          headers: { 'Authorization': `Bearer ${appState.token}` }
+        });
+        if (response.ok) {
+          appState.horarios = await response.json();
+          renderizarHorarios();
+        }
+      } catch (error) {
+        console.error('Erro ao carregar horários:', error);
+      }
+    }
+
+    async function handleCriarHorario(e) {
+      e.preventDefault();
+      const hora = document.getElementById('hora').value;
+      try {
+        const response = await fetch(`${API_URL}/schedules`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${appState.token}`
+          },
+          body: JSON.stringify({ hora })
+        });
+        if (response.ok) {
+          showMessage('dashboardMessage', 'Horário criado com sucesso!', 'success');
+          document.getElementById('criarHorarioForm').reset();
+          await carregarHorarios();
+          setTimeout(() => {
+            document.getElementById('dashboardMessage').innerHTML = '';
+          }, delay * 3);
+        }
+      } catch (error) {
+        showMessage('dashboardMessage', 'Erro ao criar horário', 'error');
+      }
+    }
+
+    function renderizarHorarios() {
+      const container = document.getElementById('horariosContainer');
+      if (appState.horarios.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Nenhum horário cadastrado ainda.</p>';
+        return;
+      }
+      const horariosOrdenados = [...appState.horarios].sort((a, b) => a.hora.localeCompare(b.hora));
+      container.innerHTML = horariosOrdenados.map(horario => `
+        <div class="horario-item">
+          <div class="horario-content">
+            <h3>${horario.hora}</h3>
+            <p><strong>Criador:</strong> ${horario.creator}</p>
+          </div>
+          <button class="btn-delete" onclick="deletarHorario(${horario.id})">Excluir</button>
+        </div>
+      `).join('');
+    }
+
+    async function deletarHorario(id) {
+      if (confirm('Tem certeza que deseja excluir este horário?')) {
+        try {
+          const response = await fetch(`${API_URL}/schedules/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${appState.token}` }
+          });
+          if (response.ok) {
+            showMessage('dashboardMessage', 'Horário excluído com sucesso!', 'success');
+            await carregarHorarios();
+            setTimeout(() => {
+              document.getElementById('dashboardMessage').innerHTML = '';
+            }, delay * 3);
+          }
+        } catch (error) {
+          showMessage('dashboardMessage', 'Erro ao excluir horário', 'error');
+        }
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('dashboardPage').classList.remove('hidden');
+      document.getElementById('userInfo').textContent = `Logado como: ${appState.user.name}`;
+    }
+
+    function showLogin() {
+      document.getElementById('loginPage').classList.remove('hidden');
+      document.getElementById('dashboardPage').classList.add('hidden');
+    }
+
+    function logout() {
+      appState.token = null;
+      appState.user = null;
+      appState.horarios = [];
+      storage.clearAuth();
+      showLogin();
+      document.getElementById('loginForm').reset();
+      showMessage('loginMessage', 'Logout realizado com sucesso!', 'success');
+      setTimeout(() => {
+        document.getElementById('loginMessage').innerHTML = '';
+      }, delay);
+    }
+
+    function showMessage(elementId, message, type) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `<div class="message ${type}">${message}</div>`;
+    }
+  </script>
+</body>
+</html>
+)rawliteral";

@@ -15,5 +15,5 @@ compile_commands.json
 *.a
 *.elf
 
-src/secrets.h
-src/config.h
+include/secrets.h
+include/config.h
