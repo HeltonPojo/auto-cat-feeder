@@ -219,29 +219,23 @@
 
 <body>
   <div class="container">
-    <!-- Página de Login -->
     <div id="loginPage" class="login-container">
       <h1>Bem-vindo</h1>
       <p class="subtitle">Faça login para acessar o sistema</p>
-
       <div id="loginMessage"></div>
-
       <form id="loginForm">
         <div class="form-group">
           <label for="name">Nome</label>
           <input type="text" id="name" required placeholder="Seu nome">
         </div>
-
         <div class="form-group">
           <label for="password">Senha</label>
           <input type="password" id="password" required placeholder="********">
         </div>
-
         <button type="submit">Entrar</button>
       </form>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboardPage" class="dashboard-container hidden">
       <div class="header-dashboard">
         <div>
@@ -250,10 +244,7 @@
         </div>
         <button class="btn-secondary" onclick="logout()" style="width: auto; padding: 10px 20px;">Sair</button>
       </div>
-
       <div id="dashboardMessage"></div>
-
-      <!-- Formulário para criar novo horário -->
       <div class="form-criar">
         <h2>Criar Novo Horário</h2>
         <form id="criarHorarioForm">
@@ -261,12 +252,9 @@
             <label for="hora">Hora</label>
             <input type="time" id="hora" required>
           </div>
-
           <button type="submit">Criar Horário</button>
         </form>
       </div>
-
-      <!-- Lista de horários -->
       <div class="horarios-list">
         <h2>Horários Existentes</h2>
         <div id="horariosContainer">
@@ -278,6 +266,7 @@
 
   <script>
     const delay = 1000;
+    const API_URL = window.location.origin;
 
     let appState = {
       token: null,
@@ -293,15 +282,12 @@
           console.error('Erro ao salvar token:', e);
         }
       },
-
       getToken: () => {
         try {
           const cookies = document.cookie.split(';');
           for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
-            if (name === 'authToken') {
-              return value;
-            }
+            if (name === 'authToken') return value;
           }
           return null;
         } catch (e) {
@@ -309,7 +295,6 @@
           return null;
         }
       },
-
       setUser: (user) => {
         try {
           document.cookie = `userData=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Strict`;
@@ -317,15 +302,12 @@
           console.error('Erro ao salvar usuário:', e);
         }
       },
-
       getUser: () => {
         try {
           const cookies = document.cookie.split(';');
           for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
-            if (name === 'userData') {
-              return JSON.parse(decodeURIComponent(value));
-            }
+            if (name === 'userData') return JSON.parse(decodeURIComponent(value));
           }
           return null;
         } catch (e) {
@@ -333,7 +315,6 @@
           return null;
         }
       },
-
       clearAuth: () => {
         try {
           document.cookie = 'authToken=; path=/; max-age=0';
@@ -346,7 +327,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       checkAuth();
-
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
       document.getElementById('criarHorarioForm').addEventListener('submit', handleCriarHorario);
     });
@@ -354,7 +334,6 @@
     function checkAuth() {
       const savedToken = storage.getToken();
       const savedUser = storage.getUser();
-
       if (savedToken && savedUser) {
         appState.token = savedToken;
         appState.user = savedUser;
@@ -365,113 +344,110 @@
       }
     }
 
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
-
       const name = document.getElementById('name').value;
       const password = document.getElementById('password').value;
 
-      // POST login body { name: , pass: }
-      if (name && password) {
-        const token = 'token_' + Math.random().toString(36).substr(2, 9);
-        const user = {
-          name: name
-        };
-
-        appState.token = token;
-        appState.user = user;
-        storage.setToken(token);
-        storage.setUser(user);
-
-        showMessage('loginMessage', 'Login realizado com sucesso!', 'success');
-
-        setTimeout(() => {
-          showDashboard();
-          carregarHorarios();
-        }, delay);
-      } else {
-        showMessage('loginMessage', 'Por favor, preencha todos os campos', 'error');
+      try {
+        const response = await fetch(`${API_URL}/login`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, password})
+        });
+        const data = await response.json();
+        if (response.ok) {
+          appState.token = data.token;
+          appState.user = {name: data.name};
+          storage.setToken(data.token);
+          storage.setUser(appState.user);
+          showMessage('loginMessage', 'Login realizado com sucesso!', 'success');
+          setTimeout(() => {
+            showDashboard();
+            carregarHorarios();
+          }, delay);
+        } else {
+          showMessage('loginMessage', data.error || 'Erro ao fazer login', 'error');
+        }
+      } catch (error) {
+        showMessage('loginMessage', 'Erro de conexão com o servidor', 'error');
       }
     }
 
-    function handleCriarHorario(e) {
-      e.preventDefault();
-
-      let lastId = appState.horarios.length > 0 ? appState.horarios[appState.horarios.length - 1].id : 0;
-      const novoHorario = {
-        id: lastId + 1,
-        hora: document.getElementById('hora').value,
-        creator: appState.user.name
-      };
-
-      // POST /create body{ hora } Bearer ...
-      appState.horarios.push(novoHorario);
-
-      showMessage('dashboardMessage', 'Horário criado com sucesso!', 'success');
-      document.getElementById('criarHorarioForm').reset();
-      renderizarHorarios();
-
-      setTimeout(() => {
-        document.getElementById('dashboardMessage').innerHTML = '';
-      }, delay);
+    async function carregarHorarios() {
+      try {
+        const response = await fetch(`${API_URL}/schedules`, {
+          headers: {'Authorization': `Bearer ${appState.token}`}
+        });
+        if (response.ok) {
+          appState.horarios = await response.json();
+          renderizarHorarios();
+        }
+      } catch (error) {
+        console.error('Erro ao carregar horários:', error);
+      }
     }
 
-    function carregarHorarios() {
-      // GET /schedules Bearer ....
-      appState.horarios = [
-        {
-          id: 1,
-          hora: '10:00',
-          creator: "Helton"
-        },
-        {
-          id: 2,
-          hora: '14:30',
-          creator: "Helton"
+    async function handleCriarHorario(e) {
+      e.preventDefault();
+      const hora = document.getElementById('hora').value;
+      try {
+        const response = await fetch(`${API_URL}/schedules`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${appState.token}`
+          },
+          body: JSON.stringify({hora})
+        });
+        if (response.ok) {
+          showMessage('dashboardMessage', 'Horário criado com sucesso!', 'success');
+          document.getElementById('criarHorarioForm').reset();
+          await carregarHorarios();
+          setTimeout(() => {
+            document.getElementById('dashboardMessage').innerHTML = '';
+          }, delay * 3);
         }
-      ];
-
-      renderizarHorarios();
+      } catch (error) {
+        showMessage('dashboardMessage', 'Erro ao criar horário', 'error');
+      }
     }
 
     function renderizarHorarios() {
       const container = document.getElementById('horariosContainer');
-
       if (appState.horarios.length === 0) {
         container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Nenhum horário cadastrado ainda.</p>';
         return;
       }
-
-      // Ordenar por hora
-      const horariosOrdenados = [...appState.horarios].sort((a, b) => {
-        return a.hora.localeCompare(b.hora);
-      });
-
-      container.innerHTML = horariosOrdenados.map(horario => {
-        return `
-          <div class="horario-item">
-            <div class="horario-content">
-              <h3>${horario.hora}</h3>
-              <p><strong>Criador:</strong> ${horario.creator}</p>
-            </div>
-            <button class="btn-delete" onclick="deletarHorario(${horario.id})">Excluir</button>
+      const horariosOrdenados = [...appState.horarios].sort((a, b) => a.hora.localeCompare(b.hora));
+      container.innerHTML = horariosOrdenados.map(horario => `
+        <div class="horario-item">
+          <div class="horario-content">
+            <h3>${horario.hora}</h3>
+            <p><strong>Criador:</strong> ${horario.creator}</p>
           </div>
-        `;
-      }).join('');
+          <button class="btn-delete" onclick="deletarHorario(${horario.id})">Excluir</button>
+        </div>
+      `).join('');
     }
 
-    function deletarHorario(id) {
+    async function deletarHorario(id) {
       if (confirm('Tem certeza que deseja excluir este horário?')) {
-        // DELETE /schedules/:id Bearer ...
-        appState.horarios = appState.horarios.filter(h => h.id !== id);
-
-        renderizarHorarios();
-
-        showMessage('dashboardMessage', 'Horário excluído com sucesso!', 'success');
-
-        setTimeout(() => {
-          document.getElementById('dashboardMessage').innerHTML = '';
-        }, delay * 3);
+        try {
+          const response = await fetch(`${API_URL}/schedules/${id}`, {
+            method: 'DELETE',
+            headers: {'Authorization': `Bearer ${appState.token}`}
+          });
+          if (response.ok) {
+            showMessage('dashboardMessage', 'Horário excluído com sucesso!', 'success');
+            await carregarHorarios();
+            setTimeout(() => {
+              document.getElementById('dashboardMessage').innerHTML = '';
+            }, delay * 3);
+          }
+        } catch (error) {
+          showMessage('dashboardMessage', 'Erro ao excluir horário', 'error');
+        }
       }
     }
 
@@ -491,11 +467,9 @@
       appState.user = null;
       appState.horarios = [];
       storage.clearAuth();
-
       showLogin();
       document.getElementById('loginForm').reset();
       showMessage('loginMessage', 'Logout realizado com sucesso!', 'success');
-
       setTimeout(() => {
         document.getElementById('loginMessage').innerHTML = '';
       }, delay);
